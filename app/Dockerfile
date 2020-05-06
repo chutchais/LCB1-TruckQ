@@ -4,6 +4,10 @@ FROM python:3.7.5-alpine
 RUN apk add --update --no-cache \
     g++ gcc libxslt-dev musl-dev python3-dev \
     libffi-dev openssl-dev jpeg-dev zlib-dev
+
+RUN apk add --no-cache tzdata
+ENV TZ Asia/Bangkok
+
 ENV LIBRARY_PATH=/lib:/usr/lib
 
 WORKDIR /usr/src/app
