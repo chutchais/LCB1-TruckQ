@@ -1,0 +1,27 @@
+# docker-compose.yml
+
+version: '3.3'
+
+services:
+  tq-redis:
+    container_name: tq-redis
+    image: redis:5.0.6-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - 6379:6379
+
+  tq-server:
+    build:
+      context: ./app
+    command: python app.py
+    container_name: tq-server
+    depends_on:
+      - tq-redis
+    environment:
+      - REDIS_URL=redis://tq-redis:6379/0
+    ports:
+      - 5000:5000
+
+volumes:  
+  redis_data:
