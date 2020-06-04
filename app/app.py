@@ -13,7 +13,8 @@ def truck_maingate(truck_licence):
 	ttl = 31104000 #one year in seconds
 	jdata ={'license' 	: truck_licence,
 			'date' 		: str(datetime.datetime.now().strftime("%Y-%m-%d")),
-			'time' 		: str(datetime.datetime.now().strftime("%H:%M"))}
+			'time' 		: str(datetime.datetime.now().strftime("%H:%M")),
+			'truckq_number' : ''}
 	return json.dumps(jdata, indent=4,sort_keys=True) ,200
 
 if __name__ == '__main__':
