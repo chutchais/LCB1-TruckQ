@@ -14,6 +14,7 @@ services:
   tq-server:
     build:
       context: ./app
+    # entrypoint: ./docker-entrypoint.sh
     command: python app.py
     container_name: tq-server
     depends_on:
@@ -22,6 +23,14 @@ services:
       - REDIS_URL=redis://tq-redis:6379/0
     ports:
       - 5000:5000
+
+  pat-server:
+    build:
+      context: ./app
+    # entrypoint: ./docker-entrypoint.sh
+    command: python truckq.py
+    container_name: pat-server
+    
 
 volumes:  
   redis_data:

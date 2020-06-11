@@ -18,3 +18,6 @@ RUN pip install -r requirements.txt
 
 
 COPY . /usr/src/app
+
+
+RUN chmod +x /usr/src/app/docker-entrypoint.sh

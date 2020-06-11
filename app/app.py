@@ -6,16 +6,88 @@ import datetime
 from flask import request
 from flask import Response
 
+import redis
+import requests
+# import json
+# from datetime import datetime, timedelta
+
 app = Flask(__name__)
 
-@app.route('/maingate/<truck_licence>', methods=['GET'])
-def truck_maingate(truck_licence):
-	ttl = 31104000 #one year in seconds
-	jdata ={'license' 	: truck_licence,
-			'date' 		: str(datetime.datetime.now().strftime("%Y-%m-%d")),
-			'time' 		: str(datetime.datetime.now().strftime("%H:%M")),
-			'truckq_number' : ''}
+# db = redis.StrictRedis('localhost', 6379, charset="utf-8", decode_responses=True)
+db = redis.StrictRedis('tq-redis', 6379, charset="utf-8", decode_responses=True)
+
+# For N4 request
+def get_key_by_license(terminal,truck_license):
+	key = f"{terminal}:truck:{truck_license}"
+	if not db.exists(key): #does the hash exist?
+		date_str 		= datetime.datetime.now().strftime("%Y-%m-%d")
+		time_str 		= datetime.datetime.now().strftime("%H:%M")
+		truckq_number	= ''
+		container_no 	= ''
+	else :
+		json_value = json.loads(db.get(key)) #get all the keys in the hash
+		getein_time 	= datetime.datetime.strptime(json_value['Main_Gate_Check_In_Time'],"%Y-%m-%d %H:%M:%S")
+		date_str 		= getein_time.strftime("%Y-%m-%d")
+		time_str 		= getein_time.strftime("%H:%M")
+		truckq_number 	= json_value['TruckQ_Booking_NO']
+		container_no 	= json_value['CONTAINER_NO']
+	
+	jdata ={'license' 	: truck_license,
+			'date' 		: date_str,
+			'time' 		: time_str,
+			'truckq_number' : truckq_number,
+			'container' : container_no }
+	return jdata
+
+def get_key_by_container(container):
+	key = f"container:{container}"
+	if not db.exists(key): #does the hash exist?
+		date_str 		= datetime.datetime.now().strftime("%Y-%m-%d")
+		time_str 		= datetime.datetime.now().strftime("%H:%M")
+		truckq_number	= ''
+		container_no 	= container
+		truck_license 	= ''
+		terminal 		= ''
+	else :
+		json_value = json.loads(db.get(key)) #get all the keys in the hash
+		getein_time 	= datetime.datetime.strptime(json_value['Main_Gate_Check_In_Time'],"%Y-%m-%d %H:%M:%S")
+		date_str 		= getein_time.strftime("%Y-%m-%d")
+		time_str 		= getein_time.strftime("%H:%M")
+		truckq_number 	= json_value['TruckQ_Booking_NO']
+		container_no 	= json_value['CONTAINER_NO']
+		truck_license 	= json_value['Truck_License_NO']
+		terminal 		= json_value['TERMINAL_ID']
+	
+	jdata ={'license' 	: truck_license,
+			'date' 		: date_str,
+			'time' 		: time_str,
+			'truckq_number' : truckq_number,
+			'container' : container_no,
+			'terminal'  : terminal }
+	return jdata
+
+# Older version
+# @app.route('/maingate/<truck_licence>', methods=['GET'])
+# def truck_maingate(truck_licence):
+# 	jdata ={'license' 	: truck_licence,
+# 			'date' 		: str(datetime.datetime.now().strftime("%Y-%m-%d")),
+# 			'time' 		: str(datetime.datetime.now().strftime("%H:%M")),
+# 			'truckq_number' : ''}
+# 	return json.dumps(jdata, indent=4,sort_keys=True) ,200
+
+# New Version
+# @app.route('/maingate/<terminal>/<truck_license>', methods=['GET'])
+# def truck_maingate_by_terminal(terminal,truck_license):
+# 	jdata = get_key_by_license(terminal,truck_license)
+# 	return json.dumps(jdata, indent=4,sort_keys=True) ,200
+
+@app.route('/maingate/container/<container>', methods=['GET'])
+def truck_maingate_by_container(container):
+	jdata = get_key_by_container(container)
 	return json.dumps(jdata, indent=4,sort_keys=True) ,200
+
+
+# --------------End-----------------
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0',debug=True)
