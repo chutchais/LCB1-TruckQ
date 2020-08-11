@@ -84,9 +84,9 @@ def get_key_by_container(container):
 
 
 
-@app.route('/maingate/<truck_license>', methods=['GET'])
+@app.route('/maingate/raw/<truck_license>', methods=['GET'])
 def truck_maingate_by_license(truck_license):
-	jdata = get_key_by_license(terminal,truck_license)
+	jdata = get_key_by_license(truck_license)
 	return json.dumps(jdata, indent=4,sort_keys=True) ,200
 
 # New Version
