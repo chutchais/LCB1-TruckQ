@@ -16,8 +16,15 @@ app = Flask(__name__)
 # db = redis.StrictRedis('localhost', 6379, charset="utf-8", decode_responses=True)
 db = redis.StrictRedis('tq-redis', 6379, charset="utf-8", decode_responses=True)
 
+# Added by Chutchai on Aug 11,2020
+# To Support License key input
+def get_key_by_license(truck_license):
+	key = f"{truck_license}"
+	json_value = json.loads(db.get(key)) #get all the keys in the hash
+	return json_value
+
 # For N4 request
-def get_key_by_license(terminal,truck_license):
+def get_key_by_terminal_and_license(terminal,truck_license):
 	key = f"{terminal}:truck:{truck_license}"
 	if not db.exists(key): #does the hash exist?
 		date_str 		= datetime.datetime.now().strftime("%Y-%m-%d")
@@ -75,10 +82,17 @@ def get_key_by_container(container):
 # 			'truckq_number' : ''}
 # 	return json.dumps(jdata, indent=4,sort_keys=True) ,200
 
+
+
+@app.route('/maingate/raw/<truck_license>', methods=['GET'])
+def truck_maingate_by_license(truck_license):
+	jdata = get_key_by_license(terminal,truck_license)
+	return json.dumps(jdata, indent=4,sort_keys=True) ,200
+
 # New Version
 @app.route('/maingate/<terminal>/<truck_license>', methods=['GET'])
-def truck_maingate_by_terminal(terminal,truck_license):
-	jdata = get_key_by_license(terminal,truck_license)
+def truck_maingate_by_terminal_license(terminal,truck_license):
+	jdata = get_key_by_terminal_and_license(terminal,truck_license)
 	return json.dumps(jdata, indent=4,sort_keys=True) ,200
 
 @app.route('/maingate/container/<container>', methods=['GET'])
