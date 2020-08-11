@@ -34,9 +34,15 @@ def pulling_PAT(terminal,payload):
 	# try:
 	res = requests.post(URL_MAINGATE,payload)
 	# Save to Database
-	ttl = 60*60*4 #3 hours , 60*60*3
+	ttl = 60*60*6 #6 hours , 60*60*3
 	for truck in res.json():
 		# Key By Truck license
+		#Added on Aug 11,2020 -- To store License key
+		key = f"{truck['Truck_License_NO']}"
+		db.set(key,json.dumps(truck)) #store dict in a hashjson.dumps(json_data)
+		db.expire(key, ttl) #expire it after 6 hours
+		
+		# Key By Terminal and Truck license
 		key = f"{terminal}:truck:{truck['Truck_License_NO']}"
 		db.set(key,json.dumps(truck)) #store dict in a hashjson.dumps(json_data)
 		db.expire(key, ttl) #expire it after a year
