@@ -20,7 +20,7 @@ db = redis.StrictRedis('tq-redis', 6379, charset="utf-8", decode_responses=True)
 # To Support License key input
 def get_key_by_license(truck_license):
 	key = f"{truck_license}"
-	json_value = json.loads(db.get(key)) #get all the keys in the hash
+	json_value = json.loads(db.get(key)).encode('utf8') #get all the keys in the hash
 	return json_value
 
 # For N4 request
@@ -87,7 +87,7 @@ def get_key_by_container(container):
 @app.route('/maingate/raw/<truck_license>', methods=['GET'])
 def truck_maingate_by_license(truck_license):
 	jdata = get_key_by_license(truck_license)
-	return json.dumps(jdata, indent=4,sort_keys=True) ,200
+	return json.dumps(jdata.decode(), indent=4,sort_keys=True) ,200
 
 # New Version
 @app.route('/maingate/<terminal>/<truck_license>', methods=['GET'])
