@@ -32,6 +32,15 @@ services:
     # entrypoint: ./docker-entrypoint.sh
     command: python truckq.py
     container_name: pat-server
+  
+  booking-server:
+    restart: unless-stopped
+    build:
+      context: ./app
+    command: python booking.py
+    container_name: booking-server
+    ports:
+      - 5001:5000
     
 
 volumes:  
