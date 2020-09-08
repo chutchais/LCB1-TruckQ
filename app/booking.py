@@ -3,13 +3,19 @@ import time
 import json
 import datetime
 
-from flask import request
+from flask import request,jsonify
 from flask import Response
 
 import redis
 import requests
 
+# Added on Sep 8,2020
+#To support CORS
+from flask_cors import CORS, cross_origin
+
 app = Flask(__name__)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 # Booking API
 URL_BOOKING = "http://192.168.10.16:5001/booking/"
@@ -34,6 +40,7 @@ db = redis.StrictRedis('tq-redis', 6379,db=2, charset="utf-8", decode_responses=
 	#   ETB     (key = BOOKING:VESSEL:etb)
 
 @app.route('/booking/<booking>/<container>', methods=['GET','POST'])
+@cross_origin()
 def query_booking_container(booking,container):
 	# 1) Pull Booking data
 	result,message = verify_booking_container(booking,container)
@@ -43,9 +50,14 @@ def query_booking_container(booking,container):
 		"result":"ACCEPT" if result else 'NOTACCEPT',
 		"message":message
 	}
-	return json.dumps(payload, indent=4) ,200
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+	# return json.dumps(payload, indent=4) ,200
+	
 
 @app.route('/booking/<booking>/<container>/reserve', methods=['GET','POST'])
+@cross_origin()
 def reserve_booking_container(booking,container):
 	# 1) Pull Booking data
 	result,message = reserve_Q_booking_container(booking,container)
@@ -55,9 +67,13 @@ def reserve_booking_container(booking,container):
 		"result":"ok" if result else 'failed',
 		"message":message
 	}
-	return json.dumps(payload, indent=4) ,200
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+	# return json.dumps(payload, indent=4) ,200
 
 @app.route('/booking/<booking>/<container>/cancel', methods=['GET','POST'])
+@cross_origin()
 def cancel_booking_container(booking,container):
 	# 1) Pull Booking data
 	result,message = cancel_Q_booking_container(booking,container)
@@ -67,7 +83,10 @@ def cancel_booking_container(booking,container):
 		"result":"ok" if result else 'failed',
 		"message":message
 	}
-	return json.dumps(payload, indent=4) ,200
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+	# return json.dumps(payload, indent=4) ,200
 
 
 # Internal function
@@ -209,6 +228,7 @@ def getETB(vessel,voy):
 
 # Import -- Full Container
 @app.route('/bl/<bl>/<container>', methods=['GET','POST'])
+@cross_origin()
 def query_bl_container(bl,container):
 	# 1) Pull Booking data
 	result = True
@@ -221,9 +241,13 @@ def query_bl_container(bl,container):
 		"result":"ACCEPT" if result else 'NOTACCEPT',
 		"message":message
 	}
-	return json.dumps(payload, indent=4) ,200
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+	# return json.dumps(payload, indent=4) ,200
 
 @app.route('/bl/<bl>/<container>/reserve', methods=['GET','POST'])
+@cross_origin()
 def reserve_bl_container(bl,container):
 	# 1) Pull Booking data
 	result,message = reserve_Q_bl_container(bl,container)
@@ -233,10 +257,14 @@ def reserve_bl_container(bl,container):
 		"result":"ok" if result else 'failed',
 		"message":message
 	}
-	return json.dumps(payload, indent=4) ,200
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+	# return json.dumps(payload, indent=4) ,200
 
 
 @app.route('/bl/<bl>/<container>/cancel', methods=['GET','POST'])
+@cross_origin()
 def cancel_bl_container(bl,container):
 	# 1) Pull Booking data
 	result,message = cancel_Q_bl_container(bl,container)
@@ -246,7 +274,10 @@ def cancel_bl_container(bl,container):
 		"result":"ok" if result else 'failed',
 		"message":message
 	}
-	return json.dumps(payload, indent=4) ,200
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+	# return json.dumps(payload, indent=4) ,200
 
 def cancel_Q_bl_container(bl,container):
 	try:
@@ -339,6 +370,7 @@ def get_bl_and_save_to_db(bl):
 # --------------End-----------------
 # Import -- MTY Container
 @app.route('/shore/<shore>', methods=['GET','POST'])
+@cross_origin()
 def query_shore(shore):
 	# 1) Pull Booking data
 	result = True
@@ -349,7 +381,10 @@ def query_shore(shore):
 		"result":"ACCEPT" if result else 'NOTACCEPT',
 		"message":message
 	}
-	return json.dumps(payload, indent=4) ,200
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+	# return json.dumps(payload, indent=4) ,200
 
 
 
