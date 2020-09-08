@@ -41,7 +41,7 @@ db = redis.StrictRedis('tq-redis', 6379,db=2, charset="utf-8", decode_responses=
 	#   ETB     (key = BOOKING:VESSEL:etb)
 
 @app.route('/api/booking/<booking>/<container>', methods=['GET','POST'])
-@cross_origin()
+# @cross_origin()
 def query_booking_container(booking,container):
 	# 1) Pull Booking data
 	result,message = verify_booking_container(booking,container)
@@ -58,7 +58,7 @@ def query_booking_container(booking,container):
 	
 
 @app.route('/api/booking/<booking>/<container>/reserve', methods=['GET','POST'])
-@cross_origin()
+# @cross_origin()
 def reserve_booking_container(booking,container):
 	# 1) Pull Booking data
 	result,message = reserve_Q_booking_container(booking,container)
@@ -74,7 +74,7 @@ def reserve_booking_container(booking,container):
 	# return json.dumps(payload, indent=4) ,200
 
 @app.route('/api/booking/<booking>/<container>/cancel', methods=['GET','POST'])
-@cross_origin()
+# @cross_origin()
 def cancel_booking_container(booking,container):
 	# 1) Pull Booking data
 	result,message = cancel_Q_booking_container(booking,container)
@@ -229,7 +229,7 @@ def getETB(vessel,voy):
 
 # Import -- Full Container
 @app.route('/api/bl/<bl>/<container>', methods=['GET','POST'])
-@cross_origin()
+# @cross_origin()
 def query_bl_container(bl,container):
 	# 1) Pull Booking data
 	result = True
@@ -248,7 +248,7 @@ def query_bl_container(bl,container):
 	# return json.dumps(payload, indent=4) ,200
 
 @app.route('/api/bl/<bl>/<container>/reserve', methods=['GET','POST'])
-@cross_origin()
+# @cross_origin()
 def reserve_bl_container(bl,container):
 	# 1) Pull Booking data
 	result,message = reserve_Q_bl_container(bl,container)
@@ -265,7 +265,7 @@ def reserve_bl_container(bl,container):
 
 
 @app.route('/api/bl/<bl>/<container>/cancel', methods=['GET','POST'])
-@cross_origin()
+# @cross_origin()
 def cancel_bl_container(bl,container):
 	# 1) Pull Booking data
 	result,message = cancel_Q_bl_container(bl,container)
@@ -371,7 +371,7 @@ def get_bl_and_save_to_db(bl):
 # --------------End-----------------
 # Import -- MTY Container
 @app.route('/api/shore/<shore>', methods=['GET','POST'])
-@cross_origin()
+# @cross_origin()
 def query_shore(shore):
 	# 1) Pull Booking data
 	result = True
