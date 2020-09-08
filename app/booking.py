@@ -14,7 +14,8 @@ import requests
 from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
-cors = CORS(app)
+cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
+# cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 
 # Booking API
@@ -39,7 +40,7 @@ db = redis.StrictRedis('tq-redis', 6379,db=2, charset="utf-8", decode_responses=
 	#   Voy     (key = BOOKING:VOY:voy)
 	#   ETB     (key = BOOKING:VESSEL:etb)
 
-@app.route('/booking/<booking>/<container>', methods=['GET','POST'])
+@app.route('/api/booking/<booking>/<container>', methods=['GET','POST'])
 @cross_origin()
 def query_booking_container(booking,container):
 	# 1) Pull Booking data
@@ -56,7 +57,7 @@ def query_booking_container(booking,container):
 	# return json.dumps(payload, indent=4) ,200
 	
 
-@app.route('/booking/<booking>/<container>/reserve', methods=['GET','POST'])
+@app.route('/api/booking/<booking>/<container>/reserve', methods=['GET','POST'])
 @cross_origin()
 def reserve_booking_container(booking,container):
 	# 1) Pull Booking data
@@ -72,7 +73,7 @@ def reserve_booking_container(booking,container):
 	return response
 	# return json.dumps(payload, indent=4) ,200
 
-@app.route('/booking/<booking>/<container>/cancel', methods=['GET','POST'])
+@app.route('/api/booking/<booking>/<container>/cancel', methods=['GET','POST'])
 @cross_origin()
 def cancel_booking_container(booking,container):
 	# 1) Pull Booking data
@@ -227,7 +228,7 @@ def getETB(vessel,voy):
 	#   ETB     (key = BOOKING:VESSEL:etb)
 
 # Import -- Full Container
-@app.route('/bl/<bl>/<container>', methods=['GET','POST'])
+@app.route('/api/bl/<bl>/<container>', methods=['GET','POST'])
 @cross_origin()
 def query_bl_container(bl,container):
 	# 1) Pull Booking data
@@ -246,7 +247,7 @@ def query_bl_container(bl,container):
 	return response
 	# return json.dumps(payload, indent=4) ,200
 
-@app.route('/bl/<bl>/<container>/reserve', methods=['GET','POST'])
+@app.route('/api/bl/<bl>/<container>/reserve', methods=['GET','POST'])
 @cross_origin()
 def reserve_bl_container(bl,container):
 	# 1) Pull Booking data
@@ -263,7 +264,7 @@ def reserve_bl_container(bl,container):
 	# return json.dumps(payload, indent=4) ,200
 
 
-@app.route('/bl/<bl>/<container>/cancel', methods=['GET','POST'])
+@app.route('/api/bl/<bl>/<container>/cancel', methods=['GET','POST'])
 @cross_origin()
 def cancel_bl_container(bl,container):
 	# 1) Pull Booking data
@@ -369,7 +370,7 @@ def get_bl_and_save_to_db(bl):
 		return 0
 # --------------End-----------------
 # Import -- MTY Container
-@app.route('/shore/<shore>', methods=['GET','POST'])
+@app.route('/api/shore/<shore>', methods=['GET','POST'])
 @cross_origin()
 def query_shore(shore):
 	# 1) Pull Booking data
