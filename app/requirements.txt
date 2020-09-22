@@ -4,3 +4,4 @@ redis
 schedule
 requests
 flask-cors
+gunicorn

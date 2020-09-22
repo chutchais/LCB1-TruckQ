@@ -228,6 +228,107 @@ def getETB(vessel,voy):
 	#   ETB     (key = BOOKING:VESSEL:etb)
 
 # Import -- Full Container
+
+# 1)BL without Container -- Check Avialable
+@app.route('/api/bl/<bl>/check/<reserve_qty>', methods=['GET','POST'])
+def query_bl_qty(bl,reserve_qty=0):
+	# 1) Pull Booking data
+	result = True
+	message ="OK"
+	result,message,qty,available = verify_bl(bl,reserve_qty)
+	payload = {
+		"bl":bl,
+		"result":"ACCEPT" if result else 'NOTACCEPT',
+		"message":message,
+		"qty" : qty,
+		"available":available
+	}
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+	# return json.dumps(payload, indent=4) ,200
+
+# 2)BL without Container -- Reserve container
+@app.route('/api/bl/<bl>/reserve/<reserve_qty>', methods=['GET','POST'])
+def reserve_bl_qty(bl,reserve_qty=0):
+	# 1) Pull Booking data
+	result = False
+	message =""
+	qty =0
+	available=0
+	# --Verify Existing BL --
+	bl_data = getKey(bl)
+	if bl_data == None :
+		message = f"Not found {bl} in system"
+	else:
+		# Verify Qty.Reserved and Reserved_Qty
+		qty = getKey(f'{bl}:QTY')
+		reserved = getKey(f'{bl}:RESERVED')
+		if int(reserved)+int(reserve_qty) > int(qty) :
+			result = False
+			message = f"Unable to reserve for {reserve_qty} container(s) , Reserved number exceed BL total container number"
+			available = int(qty)-int(reserved)
+		else :
+			# Increase BL:RESERVED by reserved_qty
+			key = f"{bl}:RESERVED"
+			setKey(key,int(reserved)+int(reserve_qty))
+			#-----------------------------------
+			result=True
+			message = f"Reserved {reserve_qty} container(s) successful"
+			available = int(qty)- (int(reserved)+int(reserve_qty))
+	#------------------------
+	payload = {
+		"bl":bl,
+		"result":"ok" if result else 'failed',
+		"message":message,
+		"qty" : qty,
+		"available":available
+	}
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+
+# 2)BL without Container -- Cancel container
+@app.route('/api/bl/<bl>/cancel/<cancel_qty>', methods=['GET','POST'])
+def cancel_bl_qty(bl,cancel_qty=0):
+	# 1) Pull Booking data
+	result = False
+	message =""
+	qty =0
+	available=0
+	# --Verify Existing BL --
+	bl_data = getKey(bl)
+	if bl_data == None :
+		message = f"Not found {bl} in system"
+	else:
+		# Verify Qty.Reserved and Reserved_Qty
+		qty = getKey(f'{bl}:QTY')
+		reserved = getKey(f'{bl}:RESERVED')
+
+		new_qty = int(reserved)-int(cancel_qty)
+		new_qty = 0 if new_qty < 0 else new_qty
+
+		# Decrease BL:RESERVED by cancel_qty
+		key = f"{bl}:RESERVED"
+		setKey(key,new_qty)
+		# --------------------------------
+
+		result=True
+		message = f"Cancel {cancel_qty} container(s) successful"
+		available = int(qty)- int(new_qty)
+	#------------------------
+	payload = {
+		"bl":bl,
+		"result":"ok" if result else 'failed',
+		"message":message,
+		"qty" : qty,
+		"available":available
+	}
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+# -------------------------------------------
+
 @app.route('/api/bl/<bl>/<container>', methods=['GET','POST'])
 # @cross_origin()
 def query_bl_container(bl,container):
@@ -300,6 +401,46 @@ def reserve_Q_bl_container(bl,container):
 	except Exception as e:
 		return False,f"Unable to reserved Q of {container}"	
 
+def verify_bl(bl,reserve_qty=1):
+	try:
+		result = False
+		message=''
+		qty=0
+		available=0
+		# Check Booking in DB (redis)
+		bl_data = getKey(bl)
+		print(bl_data)
+		print (f'Check BL {bl} -- {bl_data}')
+		if bl_data == None :
+			# If dose not exist then pull from Booking API
+			print (f'Pulling booking data')
+			qty = get_bl_and_save_to_db(bl)
+			if qty == 0 : #BL QTY
+				message=f'BL {bl} does''t exist in system'
+			else :
+				# Check Request number with 
+				available = getKey(f'{bl}:RESERVED')
+				result = True
+			return result,message,qty,available
+		else:
+			# BL is exist
+			qty = getKey(f'{bl}:QTY')
+			reserved = getKey(f'{bl}:RESERVED')
+			if int(reserved)+int(reserve_qty) > int(qty) :
+				result = False
+				message = f"Unable to reserve for {reserve_qty} container(s) , Reserved number exceed BL total container number"
+				available = int(qty)-int(reserved)
+			else :
+				result = True
+				message = ""
+				available = int(qty)-int(reserved) #int(qty)-(int(reserved)+int(reserve_qty))
+			
+			
+			return result,message,qty,available
+
+
+	except Exception as e:
+		return False,f"Error to get BL {bl} -- {e}",qty,0
 
 def verify_bl_container(bl,container):
 	try:
@@ -310,13 +451,20 @@ def verify_bl_container(bl,container):
 		print (f'Check BL {bl} -- {bl_data}')
 		if bl_data == None :
 			# If dose not exist then pull from Booking API
-			# print (f'Pulling booking data')
+			print (f'Pulling booking data')
 			res = get_bl_and_save_to_db(bl)
-			if res == 0 :
+			if res == 0 : #BL QTY
 				message=f'BL {bl} does''t exist in system'
-				return False,message
+				if container == '':
+					return (False,message,0)
+				else:
+					return (False,message)
 		
-		return validate_container(bl,container)
+		print('Found BL')
+		if container == '':
+			return (True,'',6)
+		else:
+			return validate_container(bl,container)
 		# 
 	except Exception as e:
 		return 0
@@ -336,6 +484,11 @@ def get_bl_and_save_to_db(bl):
 				# 2_ QTY     (key = BOOKING:QTY:number) 
 				key = f"{bl}:QTY"
 				db.set(key,len(res.json())) 
+				db.expire(key, ttl)
+
+				# Added on Sep 18,2020 -- To intial RESERVE number
+				key = f"{bl}:RESERVED"
+				db.set(key,0) 
 				db.expire(key, ttl)
 				# 3) Vessel  (key = BOOKING:VESSEL:vessel)
 				# key = f"{bl}:VESSEL"

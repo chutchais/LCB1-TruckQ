@@ -16,7 +16,7 @@ services:
     build:
       context: ./app
     # entrypoint: ./docker-entrypoint.sh
-    command: python app.py
+    command: gunicorn --bind 0.0.0.0:5000 app:app #python app.py
     container_name: tq-server
     depends_on:
       - tq-redis
@@ -37,7 +37,7 @@ services:
     restart: unless-stopped
     build:
       context: ./app
-    command: python booking.py
+    command: gunicorn --bind 0.0.0.0:5000 booking:app #python booking.py
     container_name: booking-server
     ports:
       - 5001:5000
