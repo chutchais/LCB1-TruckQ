@@ -17,6 +17,7 @@ app = Flask(__name__)
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 # cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
+app.config['JSON_AS_ASCII'] = False
 
 # Booking API
 URL_BOOKING = "http://192.168.10.16:5001/booking/"
@@ -259,7 +260,7 @@ def reserve_bl_qty(bl,reserve_qty=0):
 	# --Verify Existing BL --
 	bl_data = getKey(bl)
 	if bl_data == None :
-		message = f"Not found {bl} in system"
+		message = f"ไม่พบ {bl} ในระบบ"
 	else:
 		# Verify Qty.Reserved and Reserved_Qty
 		qty = getKey(f'{bl}:QTY')
@@ -267,6 +268,7 @@ def reserve_bl_qty(bl,reserve_qty=0):
 		if int(reserved)+int(reserve_qty) > int(qty) :
 			result = False
 			message = f"Unable to reserve for {reserve_qty} container(s) , Reserved number exceed BL total container number"
+			message = f"ไม่สามารถจองจำนวน {reserve_qty} ตู้ได้ ,เพราะเกินจำนวน หรือ BL นี้ถูกจองเต็มหมดแล้ว"
 			available = int(qty)-int(reserved)
 		else :
 			# Increase BL:RESERVED by reserved_qty
@@ -275,6 +277,7 @@ def reserve_bl_qty(bl,reserve_qty=0):
 			#-----------------------------------
 			result=True
 			message = f"Reserved {reserve_qty} container(s) successful"
+			message = f"การจองจำนวน {reserve_qty} ตู้สำเร็จ"
 			available = int(qty)- (int(reserved)+int(reserve_qty))
 	#------------------------
 	payload = {
@@ -299,7 +302,7 @@ def cancel_bl_qty(bl,cancel_qty=0):
 	# --Verify Existing BL --
 	bl_data = getKey(bl)
 	if bl_data == None :
-		message = f"Not found {bl} in system"
+		message = f"ไม่พบ {bl} ในระบบ"
 	else:
 		# Verify Qty.Reserved and Reserved_Qty
 		qty = getKey(f'{bl}:QTY')
@@ -314,7 +317,7 @@ def cancel_bl_qty(bl,cancel_qty=0):
 		# --------------------------------
 
 		result=True
-		message = f"Cancel {cancel_qty} container(s) successful"
+		message = f"การจองจำนวน {cancel_qty} ตู้สำเร็จ"
 		available = int(qty)- int(new_qty)
 	#------------------------
 	payload = {
@@ -417,6 +420,7 @@ def verify_bl(bl,reserve_qty=1):
 			qty = get_bl_and_save_to_db(bl)
 			if qty == 0 : #BL QTY
 				message=f'BL {bl} does''t exist in system'
+				message=f'ไม่พบ {bl} ในระบบ'
 			else :
 				# Check Request number with 
 				available = getKey(f'{bl}:RESERVED')
@@ -429,6 +433,7 @@ def verify_bl(bl,reserve_qty=1):
 			if int(reserved)+int(reserve_qty) > int(qty) :
 				result = False
 				message = f"Unable to reserve for {reserve_qty} container(s) , Reserved number exceed BL total container number"
+				message = f"ไม่สามารถจองจำนวน {reserve_qty} ตู้ได้ ,เพราะเกินจำนวน หรือ BL นี้ถูกจองเต็มหมดแล้ว"
 				available = int(qty)-int(reserved)
 			else :
 				result = True
@@ -440,7 +445,7 @@ def verify_bl(bl,reserve_qty=1):
 
 
 	except Exception as e:
-		return False,f"Error to get BL {bl} -- {e}",qty,0
+		return False,f"ไม่สามารถดึงข้อมูล BL {bl} ได้ เพราะว่า {e}",qty,0
 
 def verify_bl_container(bl,container):
 	try:
