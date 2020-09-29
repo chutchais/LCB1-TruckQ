@@ -317,7 +317,7 @@ def cancel_bl_qty(bl,cancel_qty=0):
 		# --------------------------------
 
 		result=True
-		message = f"การจองจำนวน {cancel_qty} ตู้สำเร็จ"
+		message = f"การยกเลิกจำนวน {cancel_qty} ตู้สำเร็จ"
 		available = int(qty)- int(new_qty)
 	#------------------------
 	payload = {
