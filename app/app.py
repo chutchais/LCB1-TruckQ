@@ -12,6 +12,7 @@ import requests
 # from datetime import datetime, timedelta
 
 app = Flask(__name__)
+app.config['JSON_AS_ASCII'] = False
 
 # db = redis.StrictRedis('localhost', 6379, charset="utf-8", decode_responses=True)
 db = redis.StrictRedis('tq-redis', 6379, charset="utf-8", decode_responses=True)
