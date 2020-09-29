@@ -145,20 +145,21 @@ def cancel_Q_booking_container(booking,container):
 		key =f"{booking}:CONTAINER:{container}:Q"
 		deleteKey(key)
 		return True,f"Success cancel Q of {container}"
+		return True,f"ยกเลิกการจองคิวของ {container}"
 	except Exception as e:
-		return False,f"Unable to cancel Q of {container}"
+		return False,f"ไม่สามารถยกเลิกการจองคิวของ {container}"
 
 def reserve_Q_booking_container(booking,container):
 	try:
 		(result,message) = validate_container(booking,container)
 		if result == False:
-			return False,f"Unable to reserved Q of {container} ,because {message}"
+			return False,f"ไม่สามารถจองคิวของตู้ {container} ,เพราะ {message}"
 
 		key =f"{booking}:CONTAINER:{container}:Q"
 		setKey(key,datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-		return True,f"Success reserved Q of {container}"
+		return True,f"จองคิวของตู้ {container} สำเร็จ"
 	except Exception as e:
-		return False,f"Unable to reserved Q of {container}"	
+		return False,f"ไม่สามารถจองคิวของตู้ {container}"	
 
 
 def verify_booking_container(booking,container):
@@ -173,7 +174,7 @@ def verify_booking_container(booking,container):
 			# print (f'Pulling booking data')
 			res = get_booking_and_save_to_db(booking)
 			if res == 0 :
-				message=f'Booking {booking} does''t exist in system'
+				message=f'Booking {booking} ไม่มีอยู่ในระบบ'
 				return False,message
 		
 		return validate_container(booking,container)
@@ -196,14 +197,14 @@ def validate_container(booking,container):
 	# Booking exist , then check Container
 	key =f"{booking}:CONTAINER:{container}"
 	if getKey(key) == None :
-		message=f"Container:{container} is not belong to Booking:{booking}   "
+		message=f"ตู้:{container} ไม่อยู่ภายใต้ booking:{booking}   "
 		return False,message
 	
 	#Check Container is already Booked?
 	key =f"{booking}:CONTAINER:{container}:Q"
 	q = getKey(key)
 	if not q == None :
-		message=f"Container:{container} is already reserved Q (on {q})"
+		message=f"ตู้:{container} ได้ถูกจองเรียบร้อยแล้ว (เมื่อวันที่ {q})"
 		return False,message
 	
 	return True,message
@@ -388,21 +389,21 @@ def cancel_Q_bl_container(bl,container):
 	try:
 		key =f"{bl}:CONTAINER:{container}:Q"
 		deleteKey(key)
-		return True,f"Success cancel Q of {container}"
+		return True,f"ยกเลิกคิวของ {container} สำเร็จ"
 	except Exception as e:
-		return False,f"Unable to cancel Q of {container}"
+		return False,f"ไม่สามารถยกเลิกคิวของ {container}"
 
 def reserve_Q_bl_container(bl,container):
 	try:
 		(result,message) = validate_container(bl,container)
 		if result == False:
-			return False,f"Unable to reserved Q of {container} ,because {message}"
+			return False,f"ไม่สามารถจองคิวสำหรับตู้ {container} ,เพราะ {message}"
 
 		key =f"{bl}:CONTAINER:{container}:Q"
 		setKey(key,datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-		return True,f"Success reserved Q of {container}"
+		return True,f"จองคิวสำหรับตู้ {container} สำเร็จ"
 	except Exception as e:
-		return False,f"Unable to reserved Q of {container}"	
+		return False,f"จองคิวสำหรับตู้ {container} ไม่สำเร็จ"	
 
 def verify_bl(bl,reserve_qty=1):
 	try:
@@ -460,6 +461,7 @@ def verify_bl_container(bl,container):
 			res = get_bl_and_save_to_db(bl)
 			if res == 0 : #BL QTY
 				message=f'BL {bl} does''t exist in system'
+				message=f'ไม่พบ BL {bl} ในระบบ'
 				if container == '':
 					return (False,message,0)
 				else:
