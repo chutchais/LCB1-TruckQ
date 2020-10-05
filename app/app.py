@@ -3,7 +3,7 @@ import time
 import json
 import datetime
 
-from flask import request
+from flask import request,jsonify
 from flask import Response
 
 import redis
@@ -15,6 +15,7 @@ app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
 # db = redis.StrictRedis('localhost', 6379, charset="utf-8", decode_responses=True)
+# db = redis.StrictRedis('10.24.50.93', 6379, charset="utf-8", decode_responses=True)
 db = redis.StrictRedis('tq-redis', 6379, charset="utf-8", decode_responses=True)
 
 # Added by Chutchai on Aug 11,2020
@@ -87,19 +88,29 @@ def get_key_by_container(container):
 
 @app.route('/maingate/raw/<truck_license>', methods=['GET'])
 def truck_maingate_by_license(truck_license):
-	jdata = get_key_by_license(truck_license)
-	return json.dumps(jdata, indent=4,sort_keys=True) ,200
+	payload = get_key_by_license(truck_license)
+	# return json.dumps(jdata, indent=4,sort_keys=True) ,200
+	# changed on Oct 5,2020 - To support Thai (unicode)
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
 
 # New Version
 @app.route('/maingate/<terminal>/<truck_license>', methods=['GET'])
 def truck_maingate_by_terminal_license(terminal,truck_license):
-	jdata = get_key_by_terminal_and_license(terminal,truck_license)
-	return json.dumps(jdata, indent=4,sort_keys=True) ,200
+	payload = get_key_by_terminal_and_license(terminal,truck_license)
+	# return json.dumps(jdata, indent=4,sort_keys=True) ,200
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
 
 @app.route('/maingate/container/<container>', methods=['GET'])
 def truck_maingate_by_container(container):
-	jdata = get_key_by_container(container)
-	return json.dumps(jdata, indent=4,sort_keys=True) ,200
+	payload = get_key_by_container(container)
+	# return json.dumps(jdata, indent=4,sort_keys=True) ,200
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
 
 
 # --------------End-----------------
