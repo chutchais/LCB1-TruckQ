@@ -129,9 +129,12 @@ def get_booking_and_save_to_db(booking):
 				db.expire(key, ttl)
 
 				#7)Added Reserved on Oct 2,2020
+
+				# Modify on Oct 7,2020 -- To update RESERVED in case exist. 
 				key = f"{booking}:RESERVED"
-				db.set(key,0) 
-				db.expire(key, ttl)
+				if db.get(key) == None :
+					db.set(key,0) 
+					db.expire(key, ttl)
 
 
 				first_container = False
@@ -173,7 +176,11 @@ def verify_booking_container(booking,container):
 		result = False
 		message=''
 		# Check Booking in DB (redis)
-		booking_data = getKey(booking)
+		key = booking
+		# Added to improve in case there is new container added --on Oct 7,2020
+		key =f'{booking}:CONTAINER:{container}'
+		booking_data = getKey(key)
+
 		print (f'Check Booking {booking} -- {booking_data}')
 		if booking_data == None :
 			# If dose not exist then pull from Booking API
