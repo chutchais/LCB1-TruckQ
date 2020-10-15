@@ -25,8 +25,9 @@ URL_BOOKING = "http://192.168.10.16:5001/booking/"
 URL_ETB = "http://192.168.10.20:8003/berth/etb/"
 URL_BL = "http://192.168.10.16:5000/bl/"
 
-# db = redis.StrictRedis('localhost', 6379,db=2,charset="utf-8", decode_responses=True)
-db = redis.StrictRedis('tq-redis', 6379,db=2, charset="utf-8", decode_responses=True)
+# db = redis.StrictRedis('localhost', 6379,db=2,charset="utf-8", decode_responses=True)#Local
+# db = redis.StrictRedis('10.24.50.93', 6379,db=2,charset="utf-8", decode_responses=True)#Investigate
+db = redis.StrictRedis('tq-redis', 6379,db=2, charset="utf-8", decode_responses=True) #Production
 
 # --------------Start---------------
 #1) Booking/Container Query
@@ -56,11 +57,8 @@ def query_booking_container(booking,container):
 	response=jsonify(payload)
 	response.headers.add('Access-Control-Allow-Origin', '*')
 	return response
-	# return json.dumps(payload, indent=4) ,200
-	
 
 @app.route('/api/booking/<booking>/<container>/reserve', methods=['GET','POST'])
-# @cross_origin()
 def reserve_booking_container(booking,container):
 	# 1) Pull Booking data
 	result,message = reserve_Q_booking_container(booking,container)
@@ -73,7 +71,6 @@ def reserve_booking_container(booking,container):
 	response=jsonify(payload)
 	response.headers.add('Access-Control-Allow-Origin', '*')
 	return response
-	# return json.dumps(payload, indent=4) ,200
 
 @app.route('/api/booking/<booking>/<container>/cancel', methods=['GET','POST'])
 # @cross_origin()
@@ -89,7 +86,44 @@ def cancel_booking_container(booking,container):
 	response=jsonify(payload)
 	response.headers.add('Access-Control-Allow-Origin', '*')
 	return response
-	# return json.dumps(payload, indent=4) ,200
+
+# Added on Oct 9,2020 -- To support POST with payload
+@app.route('/api/booking', methods=['POST'])
+def query_booking_container_payload():
+	# 1) Pull Booking data
+	if not 'booking' in request.json:
+		return "Not found booking detail" ,404
+	
+	if not 'container' in request.json:
+		return "Not found container detail" ,404
+	
+	if not 'action' in request.json:
+		return "Not found action detail" ,404
+
+	booking		=	request.json['booking']
+	container 	=	request.json['container']
+	action 		=  	request.json['action']
+	if action =='CHECK':
+		result,message = verify_booking_container(booking,container)
+		result_str		= "ACCEPT" if result else 'NOTACCEPT'
+
+	if action =='RESERVE':
+		result,message = reserve_Q_booking_container(booking,container)
+		result_str		= "ok" if result else 'failed'
+	
+	if action =='CANCEL':
+		result,message = cancel_Q_booking_container(booking,container)
+		result_str		= "ok" if result else 'failed'
+
+	payload = {
+		"booking":booking,
+		"container":container,
+		"result":result_str,
+		"message":message
+	}
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
 
 
 # Internal function
@@ -143,8 +177,54 @@ def get_booking_and_save_to_db(booking):
 			key = f"{booking}:CONTAINER:{container['container']}"
 			db.set(key,container['container']) #store dict in a hashjson.dumps(json_data)
 			db.expire(key, ttl) #expire it after 6 hours
-		print (f'Booking container count {len(res.json())}')
+		# print (f'Booking container count {len(res.json())}')
 		return len(res.json())
+	except Exception as e:
+		# print ('Pulling booking data Error')
+		return 0
+
+def making_booking_test_data(booking,container):
+	try:
+		# Save to Database
+		ttl = 60*2 #1 mins
+		# 1) Create Booking
+		key = f"{booking}"
+		db.set(key,key) 
+		db.expire(key, ttl)
+		# 2_ QTY     (key = BOOKING:QTY:number) 
+		key = f"{booking}:QTY"
+		db.set(key,1) 
+		db.expire(key, ttl)
+		# 3) Vessel  (key = BOOKING:VESSEL:vessel)
+		key = f"{booking}:VESSEL"
+		db.set(key,'VESSEL') 
+		db.expire(key, ttl)
+		# 4) Voy     (key = BOOKING:VOY:voy)
+		key = f"{booking}:VOY"
+		db.set(key,'VOY') 
+		db.expire(key, ttl)
+		# 5) ETB     (key = BOOKING:VESSEL:etb)
+		key = f"{booking}:VESSEL:ETB"
+		etb = 'ETB'#getETB(container['vessel_code'],container['voy'])
+		db.set(key,etb) 
+		db.expire(key, ttl)
+
+		# 6) Save Json     (key = BOOKING:JSON)
+		key = f"{booking}:JSON"
+		db.set(key,'') 
+		db.expire(key, ttl)
+
+		#7)Added Reserved on Oct 2,2020
+
+		# Modify on Oct 7,2020 -- To update RESERVED in case exist. 
+		key = f"{booking}:RESERVED"
+		db.set(key,0) 
+		db.expire(key, ttl)
+			# 6) Container (key = BOOKING:CONTAINER:container)
+		key = f"{booking}:CONTAINER:{container}"
+		db.set(key,container) #store dict in a hashjson.dumps(json_data)
+		db.expire(key, ttl) #expire it after 6 hours
+		return True
 	except Exception as e:
 		print ('Pulling booking data Error')
 		return 0
@@ -181,7 +261,7 @@ def verify_booking_container(booking,container):
 		key =f'{booking}:CONTAINER:{container}'
 		booking_data = getKey(key)
 
-		print (f'Check Booking {booking} -- {booking_data}')
+		# print (f'Check Booking {booking} -- {booking_data}')
 		if booking_data == None :
 			# If dose not exist then pull from Booking API
 			# print (f'Pulling booking data')
@@ -244,6 +324,49 @@ def getETB(vessel,voy):
 
 # Import -- Full Container
 
+
+
+@app.route('/api/bl/qty', methods=['POST'])
+def query_bl_qty_payload():
+	# 1) Pull Booking data
+	if not 'bl' in request.json:
+		return "Not found booking detail" ,404
+	
+	if not 'qty' in request.json:
+		return "Not found container detail" ,404
+	
+	if not 'action' in request.json:
+		return "Not found action detail" ,404
+
+	bl			=	request.json['bl']
+	qty 		=	request.json['qty']
+	action 		=  	request.json['action']
+	result_str	=	''
+	result_str	=	''
+
+	if action =='CHECK':
+		result,message,qty,available = verify_bl(bl,qty)
+		result_str		= "ACCEPT" if result else 'NOTACCEPT'
+
+	if action =='RESERVE':
+		result,message,qty,available = reserve_bl(bl,qty)
+		result_str		= "ok" if result else 'failed'
+	
+	if action =='CANCEL':
+		result,message,qty,available = cancel_bl(bl,qty)
+		result_str		= "ok" if result else 'failed'
+
+	payload = {
+		"bl":bl,
+		"result":result_str,
+		"message":message,
+		"qty" : qty,
+		"available":available
+	}
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+
 # 1)BL without Container -- Check Avialable
 @app.route('/api/bl/<bl>/check/<reserve_qty>', methods=['GET','POST'])
 def query_bl_qty(bl,reserve_qty=0):
@@ -264,14 +387,11 @@ def query_bl_qty(bl,reserve_qty=0):
 	# return json.dumps(payload, indent=4) ,200
 
 # 2)BL without Container -- Reserve container
-@app.route('/api/bl/<bl>/reserve/<reserve_qty>', methods=['GET','POST'])
-def reserve_bl_qty(bl,reserve_qty=0):
-	# 1) Pull Booking data
+def reserve_bl(bl,reserve_qty=0):
 	result = False
 	message =""
 	qty =0
 	available=0
-	# --Verify Existing BL --
 	bl_data = getKey(bl)
 	if bl_data == None :
 		message = f"ไม่พบ {bl} ในระบบ"
@@ -293,7 +413,39 @@ def reserve_bl_qty(bl,reserve_qty=0):
 			message = f"Reserved {reserve_qty} container(s) successful"
 			message = f"การจองจำนวน {reserve_qty} ตู้สำเร็จ"
 			available = int(qty)- (int(reserved)+int(reserve_qty))
-	#------------------------
+	return result,message,qty,available
+
+@app.route('/api/bl/<bl>/reserve/<reserve_qty>', methods=['GET','POST'])
+def reserve_bl_qty(bl,reserve_qty=0):
+	# 1) Pull Booking data
+	result = False
+	message =""
+	qty =0
+	available=0
+	# --Verify Existing BL --
+	# bl_data = getKey(bl)
+	# if bl_data == None :
+	# 	message = f"ไม่พบ {bl} ในระบบ"
+	# else:
+	# 	# Verify Qty.Reserved and Reserved_Qty
+	# 	qty = getKey(f'{bl}:QTY')
+	# 	reserved = getKey(f'{bl}:RESERVED')
+	# 	if int(reserved)+int(reserve_qty) > int(qty) :
+	# 		result = False
+	# 		message = f"Unable to reserve for {reserve_qty} container(s) , Reserved number exceed BL total container number"
+	# 		message = f"ไม่สามารถจองจำนวน {reserve_qty} ตู้ได้ ,เพราะเกินจำนวน หรือ BL นี้ถูกจองเต็มหมดแล้ว"
+	# 		available = int(qty)-int(reserved)
+	# 	else :
+	# 		# Increase BL:RESERVED by reserved_qty
+	# 		key = f"{bl}:RESERVED"
+	# 		setKey(key,int(reserved)+int(reserve_qty))
+	# 		#-----------------------------------
+	# 		result=True
+	# 		message = f"Reserved {reserve_qty} container(s) successful"
+	# 		message = f"การจองจำนวน {reserve_qty} ตู้สำเร็จ"
+	# 		available = int(qty)- (int(reserved)+int(reserve_qty))
+	# #------------------------
+	result,message,qty,available = reserve_bl(bl,reserve_qty)
 	payload = {
 		"bl":bl,
 		"result":"ok" if result else 'failed',
@@ -306,8 +458,7 @@ def reserve_bl_qty(bl,reserve_qty=0):
 	return response
 
 # 2)BL without Container -- Cancel container
-@app.route('/api/bl/<bl>/cancel/<cancel_qty>', methods=['GET','POST'])
-def cancel_bl_qty(bl,cancel_qty=0):
+def cancel_bl(bl,cancel_qty=0):
 	# 1) Pull Booking data
 	result = False
 	message =""
@@ -334,6 +485,37 @@ def cancel_bl_qty(bl,cancel_qty=0):
 		message = f"การยกเลิกจำนวน {cancel_qty} ตู้สำเร็จ"
 		available = int(qty)- int(new_qty)
 	#------------------------
+	return result,message,qty,available
+
+@app.route('/api/bl/<bl>/cancel/<cancel_qty>', methods=['GET','POST'])
+def cancel_bl_qty(bl,cancel_qty=0):
+	# 1) Pull Booking data
+	result = False
+	message =""
+	qty =0
+	available=0
+	# # --Verify Existing BL --
+	# bl_data = getKey(bl)
+	# if bl_data == None :
+	# 	message = f"ไม่พบ {bl} ในระบบ"
+	# else:
+	# 	# Verify Qty.Reserved and Reserved_Qty
+	# 	qty = getKey(f'{bl}:QTY')
+	# 	reserved = getKey(f'{bl}:RESERVED')
+
+	# 	new_qty = int(reserved)-int(cancel_qty)
+	# 	new_qty = 0 if new_qty < 0 else new_qty
+
+	# 	# Decrease BL:RESERVED by cancel_qty
+	# 	key = f"{bl}:RESERVED"
+	# 	setKey(key,new_qty)
+	# 	# --------------------------------
+
+	# 	result=True
+	# 	message = f"การยกเลิกจำนวน {cancel_qty} ตู้สำเร็จ"
+	# 	available = int(qty)- int(new_qty)
+	# #------------------------
+	result,message,qty,available=cancel_bl(bl,cancel_qty)
 	payload = {
 		"bl":bl,
 		"result":"ok" if result else 'failed',
@@ -345,6 +527,47 @@ def cancel_bl_qty(bl,cancel_qty=0):
 	response.headers.add('Access-Control-Allow-Origin', '*')
 	return response
 # -------------------------------------------
+
+
+# Added on Oct 9,2020 -- To support POST method
+@app.route('/api/bl/container', methods=['POST'])
+def query_bl_container_payload():
+	# 1) Pull Booking data
+	if not 'bl' in request.json:
+		return "Not found booking detail" ,404
+	
+	if not 'container' in request.json:
+		return "Not found container detail" ,404
+	
+	if not 'action' in request.json:
+		return "Not found action detail" ,404
+
+	bl			=	request.json['bl']
+	container	=	request.json['container']
+	action 		=  	request.json['action']
+	result_str	=	''
+
+	if action =='CHECK':
+		result,message = verify_bl_container(bl,container)
+		result_str		= "ACCEPT" if result else 'NOTACCEPT'
+
+	if action =='RESERVE':
+		result,message = reserve_Q_bl_container(bl,container)
+		result_str		= "ok" if result else 'failed'
+	
+	if action =='CANCEL':
+		result,message = cancel_Q_bl_container(bl,container)
+		result_str		= "ok" if result else 'failed'
+
+	payload = {
+		"bl":bl,
+		"container":container,
+		"result":result_str,
+		"message":message
+	}
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
 
 @app.route('/api/bl/<bl>/<container>', methods=['GET','POST'])
 # @cross_origin()
@@ -426,11 +649,11 @@ def verify_bl(bl,reserve_qty=1):
 		available=0
 		# Check Booking in DB (redis)
 		bl_data = getKey(bl)
-		print(bl_data)
-		print (f'Check BL {bl} -- {bl_data}')
+		# print(bl_data)
+		# print (f'Check BL {bl} -- {bl_data}')
 		if bl_data == None :
 			# If dose not exist then pull from Booking API
-			print (f'Pulling booking data')
+			# print (f'Pulling booking data')
 			qty = get_bl_and_save_to_db(bl)
 			if qty == 0 : #BL QTY
 				message=f'BL {bl} does''t exist in system'
@@ -467,10 +690,10 @@ def verify_bl_container(bl,container):
 		message=''
 		# Check Booking in DB (redis)
 		bl_data = getKey(bl)
-		print (f'Check BL {bl} -- {bl_data}')
+		# print (f'Check BL {bl} -- {bl_data}')
 		if bl_data == None :
 			# If dose not exist then pull from Booking API
-			print (f'Pulling booking data')
+			# print (f'Pulling booking data')
 			res = get_bl_and_save_to_db(bl)
 			if res == 0 : #BL QTY
 				message=f'BL {bl} does''t exist in system'
@@ -480,13 +703,47 @@ def verify_bl_container(bl,container):
 				else:
 					return (False,message)
 		
-		print('Found BL')
+		# print('Found BL')
 		if container == '':
 			return (True,'',6)
 		else:
 			return validate_container(bl,container)
 		# 
 	except Exception as e:
+		return 0
+
+def making_bl_test_data(bl,container):
+	try:
+		ttl = 60*1 #6 hours , 60*60*3
+		# 1) Create Booking
+		key = f"{bl}"
+		db.set(key,key) 
+		db.expire(key, ttl)
+		# 2_ QTY     (key = BOOKING:QTY:number) 
+		key = f"{bl}:QTY"
+		db.set(key,1) 
+		db.expire(key, ttl)
+
+		# Added on Sep 18,2020 -- To intial RESERVE number
+		key = f"{bl}:RESERVED"
+		db.set(key,0) 
+		db.expire(key, ttl)
+
+		# 6) Save Json     (key = BOOKING:JSON)
+		key = f"{bl}:JSON"
+		db.set(key,'') 
+		db.expire(key, ttl)
+
+		# 6) Container (key = BOOKING:CONTAINER:container)
+		key = f"{bl}:CONTAINER:{container}"
+		db.set(key,container) #store dict in a hashjson.dumps(json_data)
+		db.expire(key, ttl) #expire it after 6 hours
+		return True
+	except Exception as e:
+		print (f'Pulling bl data Error : {e}')
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+		print(exc_type, fname, exc_tb.tb_lineno)
 		return 0
 
 def get_bl_and_save_to_db(bl):
@@ -554,11 +811,11 @@ def verify_shore(bl,reserve_qty=1):
 		available=0
 		# Check Booking in DB (redis)
 		bl_data = getKey(bl)
-		print(bl_data)
-		print (f'Check BL {bl} -- {bl_data}')
+		# print(bl_data)
+		# print (f'Check BL {bl} -- {bl_data}')
 		if bl_data == None :
 			# If dose not exist then pull from Booking API
-			print (f'Pulling Booking data')
+			# print (f'Pulling Booking data')
 			qty = get_booking_and_save_to_db(bl)
 			if qty == 0 : #BL QTY
 				message=f'BL {bl} does''t exist in system'
@@ -591,6 +848,48 @@ def verify_shore(bl,reserve_qty=1):
 		return False,f"ไม่สามารถดึงข้อมูล Shore {bl} ได้ เพราะว่า {e}",qty,0
 
 # Import -- MTY Container
+
+# Added on Oct 9,2020 -- To support POST method
+@app.route('/api/shore/qty', methods=['POST'])
+def query_shore_payload():
+	# 1) Pull Booking data
+	if not 'shore' in request.json:
+		return "Not found shore number detail" ,404
+	
+	if not 'qty' in request.json:
+		return "Not found qty detail" ,404
+	
+	if not 'action' in request.json:
+		return "Not found action detail" ,404
+
+	shore		=	request.json['shore']
+	qty			=	request.json['qty']
+	action 		=  	request.json['action']
+	result_str	=	''
+
+	if action =='CHECK':
+		result,message,qty,available = verify_shore(shore,qty)
+		result_str		= "ACCEPT" if result else 'NOTACCEPT'
+
+	if action =='RESERVE':
+		result,message,qty,available = reserve_shore(shore,qty)
+		result_str		= "ok" if result else 'failed'
+	
+	if action =='CANCEL':
+		result,message,qty,available = cancel_shore(shore,qty)
+		result_str		= "ok" if result else 'failed'
+
+	payload = {
+		"shore":shore,
+		"result": result_str,
+		"message":message,
+		"qty" : qty,
+		"available":available
+	}
+	response=jsonify(payload)
+	response.headers.add('Access-Control-Allow-Origin', '*')
+	return response
+
 @app.route('/api/shore/<shore>', methods=['GET','POST'])
 # @cross_origin()
 def query_shore(shore):
@@ -632,8 +931,7 @@ def query_shore_qty(shore,reserve_qty=0):
 	# return json.dumps(payload, indent=4) ,200
 
 # 2)shore without Container -- Reserve container
-@app.route('/api/shore/<shore>/reserve/<reserve_qty>', methods=['GET','POST'])
-def reserve_shore_qty(shore,reserve_qty=0):
+def reserve_shore(shore,reserve_qty=0):
 	# 1) Pull Booking data
 	result = False
 	message =""
@@ -662,6 +960,39 @@ def reserve_shore_qty(shore,reserve_qty=0):
 			message = f"การจองจำนวน {reserve_qty} ตู้สำเร็จ"
 			available = int(qty)- (int(reserved)+int(reserve_qty))
 	#------------------------
+	return result,message,qty,available
+
+@app.route('/api/shore/<shore>/reserve/<reserve_qty>', methods=['GET','POST'])
+def reserve_shore_qty(shore,reserve_qty=0):
+	# 1) Pull Booking data
+	result = False
+	message =""
+	qty =0
+	available=0
+	# # --Verify Existing BL --
+	# bl_data = getKey(shore)
+	# if bl_data == None :
+	# 	message = f"ไม่พบ {shore} ในระบบ"
+	# else:
+	# 	# Verify Qty.Reserved and Reserved_Qty
+	# 	qty = getKey(f'{shore}:QTY')
+	# 	reserved = getKey(f'{shore}:RESERVED')
+	# 	if int(reserved)+int(reserve_qty) > int(qty) :
+	# 		result = False
+	# 		message = f"Unable to reserve for {reserve_qty} container(s) , Reserved number exceed BL total container number"
+	# 		message = f"ไม่สามารถจองจำนวน {reserve_qty} ตู้ได้ ,เพราะเกินจำนวน หรือ ชอร์นี้ถูกจองเต็มหมดแล้ว"
+	# 		available = int(qty)-int(reserved)
+	# 	else :
+	# 		# Increase BL:RESERVED by reserved_qty
+	# 		key = f"{shore}:RESERVED"
+	# 		setKey(key,int(reserved)+int(reserve_qty))
+	# 		#-----------------------------------
+	# 		result=True
+	# 		message = f"Reserved {reserve_qty} container(s) successful"
+	# 		message = f"การจองจำนวน {reserve_qty} ตู้สำเร็จ"
+	# 		available = int(qty)- (int(reserved)+int(reserve_qty))
+	# #------------------------
+	result,message,qty,available = reserve_shore(shore,reserve_qty)
 	payload = {
 		"shore":shore,
 		"result":"ok" if result else 'failed',
@@ -674,8 +1005,7 @@ def reserve_shore_qty(shore,reserve_qty=0):
 	return response
 
 # 2)BL without Container -- Cancel container
-@app.route('/api/shore/<shore>/cancel/<cancel_qty>', methods=['GET','POST'])
-def cancel_shore_qty(shore,cancel_qty=0):
+def cancel_shore(shore,cancel_qty=0):
 	# 1) Pull Booking data
 	result = False
 	message =""
@@ -702,6 +1032,38 @@ def cancel_shore_qty(shore,cancel_qty=0):
 		message = f"การยกเลิกจำนวน {cancel_qty} ตู้สำเร็จ"
 		available = int(qty)- int(new_qty)
 	#------------------------
+	return result,message,qty,available
+
+@app.route('/api/shore/<shore>/cancel/<cancel_qty>', methods=['GET','POST'])
+def cancel_shore_qty(shore,cancel_qty=0):
+	# 1) Pull Booking data
+	result = False
+	message =""
+	qty =0
+	available=0
+	# # --Verify Existing BL --
+	# bl_data = getKey(shore)
+	# if bl_data == None :
+	# 	message = f"ไม่พบ {shore} ในระบบ"
+	# else:
+	# 	# Verify Qty.Reserved and Reserved_Qty
+	# 	qty = getKey(f'{shore}:QTY')
+	# 	reserved = getKey(f'{shore}:RESERVED')
+
+	# 	new_qty = int(reserved)-int(cancel_qty)
+	# 	new_qty = 0 if new_qty < 0 else new_qty
+
+	# 	# Decrease BL:RESERVED by cancel_qty
+	# 	key = f"{shore}:RESERVED"
+	# 	setKey(key,new_qty)
+	# 	# --------------------------------
+
+	# 	result=True
+	# 	message = f"การยกเลิกจำนวน {cancel_qty} ตู้สำเร็จ"
+	# 	available = int(qty)- int(new_qty)
+	# #------------------------
+	result,message,qty,available = cancel_shore(shore,cancel_qty)
+
 	payload = {
 		"shore":shore,
 		"result":"ok" if result else 'failed',
