@@ -6,7 +6,7 @@ import sys, os
 
 from flask import request,jsonify
 from flask import Response
-
+import re
 import redis
 import requests
 
@@ -1111,6 +1111,88 @@ def cancel_shore_qty(shore,cancel_qty=0):
 # 	return response
 # 	# return json.dumps(payload, indent=4) ,200
 
+
+# Added on Nov 26,2020 -- Follow Kasco purpose -
+@app.route('/api/truckq/', methods=['POST'])
+def lcb1():
+	content = request.json
+	res_json = booking_query('B1',content)
+	return res_json
+
+def booking_query(terminal,data):
+	try:
+		# Reading request data
+		request_type 	= data.get("type",None)#request_json['type']		# Tpye (Inbound/Outbound)
+		action 			= data.get("status",None)
+		container 		= data.get("container",None) # container
+		document 		= data.get("document",None) 	# booking
+
+		# Validate Data
+		regex='^[A-Z]{4}[0-9]{7}$'
+
+		if document == None :
+			return return_message(99,'ไม่พบข้อมูล หมายเลขเอกสาร')
+		
+		if request_type in ['IF','IM'] :
+			if not re.match(regex,container) :
+				return return_message(99,'ไม่พบข้อมูล หมายเลขตู้ container หรือ หมายเลขตู้ไม่ถูกต้อง')
+
+
+		if re.match(regex,container) :
+			# แบบระบุเบอร์ตู้
+			if action =='check':
+				result,message  = verify_booking_container(document,container)
+				code 			= 0 if result else 99
+				description		= message 
+
+			if action =='confirm':
+				result,message = reserve_Q_booking_container(document,container)
+				code 			= 0 if result else 99
+				description		= message
+			
+			if action =='cancel':
+				result,message = cancel_Q_booking_container(document,container)
+				code 			= 0 if result else 99
+				description		= message
+		else:
+			# แบบไม่ระบุเบอร์ตู้ ระบจำนวน
+			qty 		= data.get("qty",1)
+
+			if action =='check':
+				result,message,qty,available = verify_shore(document,qty)
+				code 			= 0 if result else 99
+				description		= message
+
+			if action =='confirm':
+				result,message,qty,available = reserve_shore(document,qty)
+				code 			= 0 if result else 99
+				description		= message
+			
+			if action =='cancel':
+				result,message,qty,available = cancel_shore(document,qty)
+				code 			= 0 if result else 99
+				description		= message
+
+		
+	except Exception as e :
+		code = 99
+		description = f'System error :{e}'
+
+
+	# Export requires container and Booking number
+	response_msg = {
+		"code": code,
+		"description": description
+	}
+	return jsonify(response_msg)
+# --------------End for Kasco----- 
+
+def return_message(code,description):
+	response_msg = {
+		"code": code,
+		"description": description
+	}
+	return jsonify(response_msg)
 
 
 def setKey(key,value):
