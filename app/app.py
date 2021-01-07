@@ -25,7 +25,7 @@ def get_key_by_license(truck_license):
 		key = f"{truck_license}"
 		json_value = json.loads(db.get(key)) #get all the keys in the hash
 	except Exception as e:
-		json_value = ''
+		json_value = None
 	return json_value
 
 # For N4 request
