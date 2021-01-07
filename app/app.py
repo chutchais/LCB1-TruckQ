@@ -23,9 +23,12 @@ db = redis.StrictRedis('tq-redis', 6379, charset="utf-8", decode_responses=True)
 def get_key_by_license(truck_license):
 	try:
 		key = f"{truck_license}"
-		json_value = json.loads(db.get(key)) #get all the keys in the hash
+		if db.get(key):
+			json_value = json.loads(db.get(key)) #get all the keys in the hash
+		else :
+			json_value = {}
 	except Exception as e:
-		json_value = None
+		json_value = {}
 	return json_value
 
 # For N4 request
